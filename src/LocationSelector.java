@@ -13,69 +13,7 @@ import java.util.List;
 
 public class LocationSelector {
 	
-	// number of test cases
-	private int numTestCases = 0;
-	
-	//list of different grids
-	private List<int[][]> grids = null;
-	
-	/**
-	 * @return the numTestCases
-	 */
-	public int getNumTestCases() {
-		return numTestCases;
-	}
-    
-
-	/**
-	 * @param numTestCases the numTestCases to set
-	 */
-	public void setNumTestCases(int numTestCases) {
-		this.numTestCases = numTestCases;
-	}
-
-
-	public LocationSelector(){
-		grids = new ArrayList<int[][]>();
-	}
-	
-	// reads input into list grids
-	private  void readInput() throws IOException{
-		
-		InputStreamReader inputStream = new InputStreamReader(System.in);
-		BufferedReader bufferedReader = new BufferedReader(inputStream);
-		
-		String numCases = bufferedReader.readLine();
-		if(numCases == null || "".equals(numCases.trim())){
-			System.out.println("Wrong Input");
-			System.exit(0);
-		}
-		
-		setNumTestCases(Integer.parseInt(numCases.trim()));
-		
-		int counterTestCases = 0;
-		
-		while(counterTestCases < getNumTestCases()){
-			
-			String strInput = bufferedReader.readLine();
-			String[] dims = strInput.split(" ");
-			
-			int rows = Integer.parseInt(dims[1]);
-			int cols = Integer.parseInt(dims[0]);
-			int[][] grid = new int[rows][cols];
-			
-			for(int i =0; i< rows; i++){
-				String[] streamStorage = bufferedReader.readLine().split(" ");
-				//map is pain in java
-				grid[i] = Arrays.stream(streamStorage).mapToInt(str ->Integer.parseInt(str)).toArray();
-			}
-			
-			grids.add(grid);	
-			counterTestCases++;
-		}      
-	}
-	
-	//calculate manhattan distance from all grid points to the centre
+	//calculate Manhattan distance from all grid points to the center
 	private int calculateManhattanDistance(List<Integer> xPoints,List<Integer> yPoints, int xCentre, int yCentre){
 		
 		System.out.println("median : ("+xCentre+","+yCentre+")");
@@ -90,31 +28,8 @@ public class LocationSelector {
 		return xDistance+yDistance;
 	}
 	
-	
-	// find minimum cost from 
-	public int findMinimumCost(int[][] grid){
-		
-		//lists of x & y cordinates of the delivery points.
-		List<Integer> xPoints = new ArrayList<Integer>();
-		List<Integer> yPoints = new ArrayList<Integer>();
-		
-		int rows = grid.length;
-		int cols = grid[0].length;
-		
-		for(int i = 0;i<rows;i++){
-			for(int j =0;j<cols;j++){
-				
-				int numDelivery = grid[i][j];
-				
-				//add 1 grid point for each delivery to that grid point
-				if(numDelivery>0){
-					for(int k = 0;k<numDelivery; k++){
-						xPoints.add(i);
-						yPoints.add(j);
-					}
-				}
-			}
-		}
+	//finds median and then distance from each point to median.
+	private int findMinimumCost(List<Integer> xPoints,List<Integer> yPoints){
 		
 		Collections.sort(xPoints);
 		Collections.sort(yPoints);
@@ -132,36 +47,166 @@ public class LocationSelector {
 			int cost2 = calculateManhattanDistance(xPoints,yPoints,xPoints.get(xMedianIndex-1),yPoints.get(yMedianIndex-1));
 			if( cost2 < cost)
 				cost = cost2;
-		}
-		
-		return cost;
-		
+		}		
+		return cost;		
 	}
 	
-	// verify if arrays are read correctly
-	private void printGrids(){
+	// find minimum cost using median. uses sorting
+	public  void findOptimalDeliveryCostSlow() throws IOException{
 		
-		for(int[][] grid: grids){
-			System.out.println(Arrays.deepToString(grid));
+		InputStreamReader inputStream = new InputStreamReader(System.in);
+		BufferedReader bufferedReader = new BufferedReader(inputStream);
+		
+		String numCases = bufferedReader.readLine();
+		if(numCases == null || "".equals(numCases.trim())){
+			System.out.println("Wrong Input");
+			System.exit(0);
 		}
+		
+		int numGrids = Integer.parseInt(numCases.trim());
+		
+		int counterTestCases = 0;
+		
+		while(counterTestCases < numGrids){
+			List<Integer> xPoints = new ArrayList<Integer>();
+			List<Integer> yPoints = new ArrayList<Integer>();
+			String strInput = bufferedReader.readLine();
+			String[] dims = strInput.split(" ");
+			
+			int rows = Integer.parseInt(dims[1]);
+	
+				for(int i =0; i< rows; i++){
+					String[] str = bufferedReader.readLine().split(" ");
+					//map is pain in java
+					int col = 0;
+					for(String s:str){		
+					if("0".equals(str)) ;
+					else{
+						int numDelivery = Integer.parseInt(s);
+						for(int count =0;count<numDelivery;count++){
+							xPoints.add(i);
+							yPoints.add(col);
+						}	
+					}
+					col++;
+				}
+			}
+			int minCost = findMinimumCost(xPoints, yPoints);
+			System.out.println(minCost+" blocks");
+			counterTestCases++;
+		}      
+	}
+	
+	//find minimal delivery cost using weighted average
+	private void calculateMinimalDeliveryCost(int[] costX,int[] costY){
+		int numX = costX.length;
+		int numY = costY.length;
+		int centerX = 0;
+		int centerY = 0;
+		int totalWeightX = 0;
+		int totalWeightY=0;
+		int weightedCostX=0;
+		int weightedCostY=0;
+		int minCostX =0;
+		int minCostY =0;
+		
+		for(int i=0;i<numX;i++){
+			totalWeightX += costX[i];	
+			weightedCostX += costX[i]*i;			
+		}
+		
+		for(int i =0;i<costY.length;i++){
+			totalWeightY += costY[i];
+			weightedCostY += costY[i]*i;
+		}
+		
+		centerX = weightedCostX/totalWeightX;
+		centerY = weightedCostY/totalWeightY;
+		
+		int[] cX = {centerX,centerX+1};
+		int[] cY = {centerY,centerY+1};
+		
+		int minCost = Integer.MAX_VALUE;
+		for(int i = 0; i<2;i++){
+			
+			for(int j = 0;j<2;j++){
+				int cost = 0;
+				minCostX=0;
+				minCostY=0;
+				
+				for(int k =0;k<numX; k++ ){
+					minCostX += Math.abs(k-cX[i])*costX[k];			
+				}	
+				for(int k =0;k<numY; k++ ){
+					minCostY += Math.abs(k-cY[j])*costY[k];		
+				}
+				cost = minCostX + minCostY;
+				//System.out.println(cost);
+				if (cost<minCost){
+					minCost=cost;
+				}
+			}
+		}
+		
+		System.out.println(minCost + " blocks");
+
+	}
+	
+	//find minimum delviery cost
+	public void findOptimalDeliveryCost() throws IOException{
+		InputStreamReader inputStream = new InputStreamReader(System.in);
+		BufferedReader bufferedReader = new BufferedReader(inputStream);
+		
+		String numCases = bufferedReader.readLine();
+		if(numCases == null || "".equals(numCases.trim())){
+			System.out.println("Wrong Input");
+			System.exit(0);
+		}
+		
+		int numGrids = Integer.parseInt(numCases.trim());
+		
+		int counterTestCases = 0;
+		
+		while(counterTestCases < numGrids){
+			String strInput = bufferedReader.readLine();
+			String[] dims = strInput.split(" ");
+			int rows = Integer.parseInt(dims[1]);
+			int cols = Integer.parseInt(dims[0]);
+			int[] xCost = new int[rows];
+			int[] yCost = new int[cols];
+			
+			for(int i =0; i< rows; i++){
+				String[] str = bufferedReader.readLine().split(" ");
+				
+				//map is pain in java
+				for(int j =0; j<str.length;j++){		
+					int numDelivery = Integer.parseInt(str[j]);
+	                xCost[i] =  xCost[i] + numDelivery;
+	                yCost[j] =  yCost[j] + numDelivery;	
+				}
+			}		
+
+			calculateMinimalDeliveryCost(xCost,yCost);
+			counterTestCases++;
+		}
+		
+		
 	}
 	
 	
 	public static void main(String[] args){
+		long startTime = System.currentTimeMillis();
 		String[] input =null;
 		LocationSelector ls = new LocationSelector();
 		
 		try {
-			ls.readInput();
+			//ls.findOptimalDeliveryCostSlow();
+			ls.findOptimalDeliveryCost();
 		} catch (IOException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
-		}
-		
-		for(int[][] grid: ls.grids){
-			int cost = ls.findMinimumCost(grid);
-			System.out.println(cost+" blocks");
-		}
-		
+		}	
+	    long stopTime = System.currentTimeMillis();
+	    long elapsedTime = stopTime - startTime;
 	}
 }
